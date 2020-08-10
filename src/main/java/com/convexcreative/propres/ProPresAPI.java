@@ -12,20 +12,14 @@ import java.util.*;
 
 public class ProPresAPI {
 
-    public static final int V6 = 6;
-    public static final int V7 = 7;
-
     private static ProPresAPI instance;
 
     private static final boolean LOG = true;
-
-    public final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private final static Random RANDOM = new Random();
+    private static final Random RANDOM = new Random();
+    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private WebSocketClient client;
-
     private ProPresAPIConfig config;
-
     private HashMap<Integer,ProPresEvent> tasks;
     private ArrayList<Integer> queuedForDeletion;
 
