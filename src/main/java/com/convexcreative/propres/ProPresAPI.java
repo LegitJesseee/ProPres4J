@@ -20,8 +20,7 @@ public class ProPresAPI {
     private static final Random RANDOM = new Random();
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    private WebSocketClient client;
-    private ProPresAPIConfig config;
+    private WebSocketClient curClient;
     private HashMap<Integer,ProPresEvent> tasks = new HashMap<>();
     private ArrayList<Integer> queuedForDeletion = new ArrayList<>();
 
@@ -41,44 +40,56 @@ public class ProPresAPI {
 
         triggerEvent(ServerStatusChangeEvent.class, ServerStatusChangeEvent.CONNECTING);
 
-
-        switch(config.getApiVersion()){
-            case 7:
-                client = new SDWebSocketClientV7(URI.create(uri), this, config.getPassword());
-                break;
-            case 6:
-            default:
-                client = new SDWebSocketClientV6(URI.create(uri), this, config.getPassword());
-        }
-
         log("Initialization complete!");
 
         return this;
     }
 
+    public WebSocketClient buildSocket(ProPresAPIConfig con){
+
+        WebSocketClient result;
+
+        final String uri = "ws://" + con.getHost() + "/stagedisplay";
+
+        switch(con.getApiVersion()){
+            case 7:
+                result = new SDWebSocketClientV7(URI.create(uri), this, con.getPassword());
+                break;
+            case 6:
+            default:
+                result = new SDWebSocketClientV6(URI.create(uri), this, con.getPassword());
+        }
+
+        return result;
+
+    }
+
     public Thread threaderBuilder(){
         return new Thread(() -> {
-            client.connect();
-            client.setConnectionLostTimeout(0);
+            curClient.connect();
+            curClient.setConnectionLostTimeout(0);
         });
     }
 
-    public void openConnection(){
+    public void openConnection(ProPresAPIConfig config){
+        curClient = buildSocket(config);
         threaderBuilder().start();
     }
 
     public void closeConnection(){
-        client.close();
+        if(curClient != null){
+            curClient.close();
+        }
     }
 
-    private void reinitialize(){
+    private void reinitialize(ProPresAPIConfig config){
         if(instance == null){
             initialize(new ProPresAPIConfig());
             return;
         }
         closeConnection();
         initialize(config);
-        openConnection();
+        openConnection(config);
     }
 
 
@@ -91,15 +102,6 @@ public class ProPresAPI {
             }
         }
         return instance;
-    }
-
-    public ProPresAPIConfig getConfig(){
-        return config;
-    }
-
-    public void setConfig(ProPresAPIConfig config){
-        this.config = config;
-        reinitialize();
     }
 
 
