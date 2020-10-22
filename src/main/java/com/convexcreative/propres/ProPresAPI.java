@@ -1,6 +1,8 @@
 package com.convexcreative.propres;
 
+import com.convexcreative.ezlogger.ConvexLogger;
 import com.convexcreative.propres.event.ProPresEvent;
+import com.convexcreative.propres.event.server.ServerStatusChangeEvent;
 import com.convexcreative.propres.socket.SDWebSocketClientV6;
 import com.convexcreative.propres.socket.SDWebSocketClientV7;
 import com.google.gson.Gson;
@@ -20,8 +22,8 @@ public class ProPresAPI {
 
     private WebSocketClient client;
     private ProPresAPIConfig config;
-    private HashMap<Integer,ProPresEvent> tasks;
-    private ArrayList<Integer> queuedForDeletion;
+    private HashMap<Integer,ProPresEvent> tasks = new HashMap<>();
+    private ArrayList<Integer> queuedForDeletion = new ArrayList<>();
 
     private ProPresAPI initialize(ProPresAPIConfig config){
 
@@ -29,8 +31,16 @@ public class ProPresAPI {
 
         log("Initializing API...");
 
-        tasks = new HashMap<>();
-        queuedForDeletion = new ArrayList<>();
+        if(tasks == null){
+            tasks = new HashMap<>();
+        }
+
+        if(queuedForDeletion == null){
+            queuedForDeletion = new ArrayList<>();
+        }
+
+        triggerEvent(ServerStatusChangeEvent.class, ServerStatusChangeEvent.CONNECTING);
+
 
         switch(config.getApiVersion()){
             case 7:
@@ -41,10 +51,24 @@ public class ProPresAPI {
                 client = new SDWebSocketClientV6(URI.create(uri), this, config.getPassword());
         }
 
-        client.connect();
         log("Initialization complete!");
 
         return this;
+    }
+
+    public Thread threaderBuilder(){
+        return new Thread(() -> {
+            client.connect();
+            client.setConnectionLostTimeout(0);
+        });
+    }
+
+    public void openConnection(){
+        threaderBuilder().start();
+    }
+
+    public void closeConnection(){
+        client.close();
     }
 
     private void reinitialize(){
@@ -52,8 +76,9 @@ public class ProPresAPI {
             initialize(new ProPresAPIConfig());
             return;
         }
-        client.close();
+        closeConnection();
         initialize(config);
+        openConnection();
     }
 
 
@@ -133,9 +158,7 @@ public class ProPresAPI {
     }
 
     public static void log(String msg){
-        if(LOG) {
-            System.out.println("[ProPresAPI] " + msg);
-        }
+        ConvexLogger.log("ProPresAPI", msg);
     }
 
     private static Class furthestSuper(Class clazz){

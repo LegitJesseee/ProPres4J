@@ -25,6 +25,8 @@ public class SDWebSocketClientV6 extends WebSocketClient {
     public void onOpen(ServerHandshake serverHandshake) {
         ProPresAPI.log("Successfully connected to server.");
         ProPresAPI.getInstance().triggerEvent(ServerConnectEvent.class, "Connected to server! (" + serverHandshake.getHttpStatusMessage() + ")");
+        ProPresAPI.getInstance().triggerEvent(ServerStatusChangeEvent.class, ServerStatusChangeEvent.CONNECTED);
+
         this.send(AUTH);
     }
 
@@ -54,7 +56,10 @@ public class SDWebSocketClientV6 extends WebSocketClient {
 
     public void onClose(int code, String reason, boolean remote) {
         final String msg = "Connection closed by " + ( remote ? "remote peer. |" : "us. |" ) + " Code: " + code + (reason==null||reason=="" ?  "" : "| Reason: " + reason);
-        ProPresAPI.getInstance().triggerEvent(ServerDisconnectEvent.class, msg);
+        ProPresAPI.getInstance().triggerEvent(ServerDisconnectEvent.class, msg, code);
+
+        ProPresAPI.getInstance().triggerEvent(ServerStatusChangeEvent.class, ServerStatusChangeEvent.DISCONNECTED);
+
 
         ProPresAPI.log("Disconnected from the server.");
         ProPresAPI.log(msg);
@@ -62,6 +67,8 @@ public class SDWebSocketClientV6 extends WebSocketClient {
 
     public void onError(Exception e) {
         ProPresAPI.getInstance().triggerEvent(ServerConnectionErrorEvent.class, e.getMessage());
+        ProPresAPI.getInstance().triggerEvent(ServerStatusChangeEvent.class, ServerStatusChangeEvent.DISCONNECTED);
+
         ProPresAPI.log("Connection error!");
         e.printStackTrace();
     }
